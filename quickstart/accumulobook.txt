@@ -1,0 +1,33 @@
+-------------
+Accumulo Book
+-------------
+user: root
+pwd: pass1234
+- instance is 'miniInstance'
+- 60 minute idle will timeout
+- see ShellExample.java for config
+
+from quickstart issue `mvn compile exec:exec -Pshell`
+
+::: output :::
+
+Zookeeper is localhost:46817
+Instance is miniInstance in /tmp/1470406498658-0
+
+run export ZKPORT=46817
+
+::: add for pom :::
+<dependency>
+      <groupId>org.ubiety</groupId>
+      <artifactId>ubigraph</artifactId>
+      <version>0.2.4</version>
+</dependency>
+
+`mvn install:install-file -Dfile=/usr/local/share/git-repos/examples/lib/ubigraph-0.2.4.jar -DgroupId=org.ubiety -DartifactId=ubigraph -Dversion=0.2.4 -Dpackaging=jar`
+
+<!-- https://mvnrepository.com/artifact/org.apache.kafka/kafka_2.10 -->
+<dependency>
+    <groupId>org.apache.kafka</groupId>
+    <artifactId>kafka_2.10</artifactId>
+    <version>0.8.2.2</version>
+</dependency>
