@@ -1,0 +1,20 @@
+# this is play graph data for testing
+# separator = (comma)
+# quote = (double quote) not required
+# row | cf | cq | val | cv (optional)
+
+# NODES
+
+m1:e1,node,id,e1
+m1:e1,node,mission,m1
+m1:e1,node,type,event
+
+m1:e2,node,id,e2
+m1:e2,node,mission,m1
+m1:e2,node,type,event
+
+# EDGES
+
+m1:e1|m1:e2,edge,v1_id,m1:e1
+m1:e1|m1:e2,edge,v2_id,m1:e2
+m1:e1|m1:e2,edge,relationship,to

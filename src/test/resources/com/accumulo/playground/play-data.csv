@@ -1,0 +1,9 @@
+# this is play data for testing
+# separator = (comma)
+# quote = (double quote) not required
+# row | cf | cq | val | cv (optional)
+"a","b","c","d","A|B"
+"a","b","f","g","A&B"
+"a","b","i","j","B"
+"a","e","f","g","A&B"
+"a","h","i","j","B"
