@@ -13,6 +13,7 @@ import org.apache.accumulo.core.client.Connector;
 import org.apache.accumulo.core.client.MutationsRejectedException;
 import org.apache.accumulo.core.client.TableExistsException;
 import org.apache.accumulo.core.client.TableNotFoundException;
+import org.apache.accumulo.core.client.admin.TableOperations;
 import org.apache.accumulo.core.data.Mutation;
 import org.apache.accumulo.core.data.Value;
 import org.apache.accumulo.core.security.ColumnVisibility;
@@ -25,24 +26,114 @@ public class AccTable {
 
 	final private static Logger logger = Logger.getLogger(AccTable.class);
 	
+	
 	/**
-	 * Create table if doesn't exist.
+	 * Create table if doesn't exist. Optionally drop and recreate.
 	 * 
 	 * @param conn Connector
 	 * @param table String
+	 * @param deleteIfPresent boolean
 	 * 
-	 * @throws AccumuloException
-	 * @throws AccumuloSecurityException
-	 * @throws TableExistsException
+	 * @throws TableNotFoundException 
+	 * @throws AccumuloSecurityException 
+	 * @throws AccumuloException 
+	 * @throws TableExistsException 
 	 */
-	public static void ensureTableCreated(Connector conn, String table)
-			throws AccumuloException, AccumuloSecurityException, TableExistsException {		
-		if (!conn.tableOperations().exists(table)) {
-			logger.info(String.format("...create table %s",table));
-			conn.tableOperations().create(table);
-		} else logger.info(String.format("...table %s already created.",table));
-	}
+	public static void setupTable(Connector conn, String table, boolean deleteIfPresent) 
+			throws AccumuloException, AccumuloSecurityException, TableNotFoundException, TableExistsException{
+		
+		TableOperations ops = conn.tableOperations();
 
+	    // delete table if directed
+	    if (ops.exists(table) && deleteIfPresent){
+	    	logger.info(String.format("...deleting existing table %s",table));
+	    	ops.delete(table);
+	    }
+
+	    // create if needed
+	    if (!ops.exists(table)){
+	    	logger.info(String.format("...(re)creating table %s",table));
+	    	ops.create(table);
+	    }
+	    else logger.info(String.format("...table %s already created.",table));
+	    
+	}
+	
+	/**
+	 * Create a BatchWriter for passing into methods that act on a writer.
+	 * 
+	 * @param conn Connector
+	 * @param table String
+	 * @return BatchWriter
+	 * 
+	 * @throws TableNotFoundException
+	 */
+	public static BatchWriter createBatchWriter(Connector conn, String table) 
+			throws TableNotFoundException{
+		 return conn.createBatchWriter(table, new BatchWriterConfig());
+	}
+	
+	/**
+	 * Convenience method to close a BatchWriter.
+	 * @param writer BatchWriter
+	 * @param eatException boolean
+	 * @throws MutationsRejectedException
+	 */
+	public static void closeBatchWriter(BatchWriter writer, boolean eatException) throws MutationsRejectedException{
+		if (writer != null){
+			if (eatException){
+				try{
+					writer.close();
+				} catch(MutationsRejectedException e){
+					logger.warn("(eatException)",e);
+				}
+			}
+			
+			else writer.close();
+		}
+	}
+	
+	/**
+	 * Insert row into table using provided BatchWriter.
+	 * 
+	 * @param writer BatchWriter	 
+	 * @param rowid String 
+	 * @param cf String
+	 * @param cq String
+	 * @param val String
+	 * @param auths String
+	 * 
+	 * @throws MutationsRejectedException
+	 */
+	public static void insertRow(BatchWriter writer, String rowid, String cf, String cq, String val, String auths)
+			throws MutationsRejectedException {		
+		
+		Mutation m = new Mutation(new Text(rowid));
+		if (null == auths) {
+			m.put(new Text(cf), new Text(cq), new Value(val.getBytes()));
+		} else {			
+			m.put(new Text(cf), new Text(cq), new ColumnVisibility(auths), new Value(val.getBytes()));			
+		}
+		writer.addMutation(m);
+	}
+	
+	/**
+	 * Insert row with public / null auths using provided BatchWriter.
+	 * 
+	 * @param writer BatchWriter	 
+	 * @param rowid String 
+	 * @param cf String
+	 * @param cq String
+	 * @param val String
+	 * 
+	 * @throws MutationsRejectedException
+	 */
+	public static void insertRowPublic(BatchWriter writer, String rowid, String cf, String cq, String val)
+			throws MutationsRejectedException {		
+		insertRow(writer,rowid,cf,cq,val,null);
+	}
+	
+	
 	/**
 	 * Insert row into table.
 	 * 

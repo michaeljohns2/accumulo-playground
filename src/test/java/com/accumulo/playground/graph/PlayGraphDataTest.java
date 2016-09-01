@@ -1,4 +1,4 @@
-package com.accumulo.playground;
+package com.accumulo.playground.graph;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.fail;
@@ -9,6 +9,7 @@ import java.nio.file.Paths;
 
 import org.junit.Test;
 
+import com.accumulo.playground.BasePlayTest;
 import com.acuumulo.playground.AccScan;
 import com.acuumulo.playground.AccTable;
 import com.acuumulo.playground.AccUtils;
@@ -30,10 +31,13 @@ public class PlayGraphDataTest extends BasePlayTest{
 			
 			//FIXME: ENHANCE SCAN CAPABILITY in AccScan
 			
-			System.out.println(AccUtils.prettyStr(results, 0));//for debugging
-
 			int match_size = 3;
-			assertEquals(String.format("Expected %d results for scan of rowid '%s' ",match_size,rowId), match_size,  results.size());
+			String msg = String.format("Expected %d results for scan of rowid '%s' ",match_size,rowId);	
+			if (DEBUG_LOG){
+				System.out.println("\n"+msg);
+				System.out.println(AccUtils.prettyStr(results, 0));
+			}
+			assertEquals(msg,match_size,results.size());
 
 		} catch (Exception e) {
 			e.printStackTrace();

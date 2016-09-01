@@ -9,6 +9,7 @@ import org.apache.accumulo.core.client.AccumuloException;
 import org.apache.accumulo.core.client.AccumuloSecurityException;
 import org.apache.accumulo.core.client.Connector;
 import org.apache.accumulo.core.client.TableExistsException;
+import org.apache.accumulo.core.client.TableNotFoundException;
 import org.apache.accumulo.core.data.Key;
 import org.apache.accumulo.core.data.Value;
 import org.junit.AfterClass;
@@ -20,17 +21,22 @@ import com.acuumulo.playground.AccTable;
 
 public class BasePlayTest {
 	
+	/* quick toggle for debug console output. */
+	public static boolean DEBUG_LOG = true;
+	
+	
 	protected static AccObj aObj;	
 	protected static Connector aConn;
 	protected static boolean useMini = true;
 	protected static String table = "table1";
+	protected static boolean dropTable = true;
 	protected static List<String> auths = Arrays.asList("A","B"); 
 
 	protected static Map<Key, Value> results;
 
 	@BeforeClass
 	public static void setUp() 
-			throws IOException, InterruptedException, AccumuloException, AccumuloSecurityException, TableExistsException {
+			throws IOException, InterruptedException, AccumuloException, AccumuloSecurityException, TableExistsException, TableNotFoundException {
 
 		/* init */ 
 		aObj = AccInstanceMgr.getAccObj(useMini);
@@ -42,7 +48,7 @@ public class BasePlayTest {
 		aObj.ensureRootAuths(auths);
 
 		// make sure table is created
-		AccTable.ensureTableCreated(aConn,table);
+		AccTable.setupTable(aConn,table,dropTable);
 
 	}
 

@@ -27,6 +27,7 @@ public class PlayDriver {
 	//use mini cluster for development and initial testing
 	static boolean useMini = true;
 	static String table = "table1";
+	static boolean dropTable = true;
 	static List<String> auths = Arrays.asList("A","B");
 
 	/**
@@ -57,7 +58,7 @@ public class PlayDriver {
 			aObj.ensureRootAuths(auths);
 			
 			// make sure table is created
-			AccTable.ensureTableCreated(aConn,table);
+			AccTable.setupTable(aConn,table,dropTable);
 
 
 			/* insert some data, with auths */

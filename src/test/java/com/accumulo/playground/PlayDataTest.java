@@ -11,6 +11,7 @@ import org.junit.Test;
 
 import com.acuumulo.playground.AccScan;
 import com.acuumulo.playground.AccTable;
+import com.acuumulo.playground.AccUtils;
 
 /**
  * Extends PlayTest and load same data from file.
@@ -45,7 +46,12 @@ public class PlayDataTest extends PlayTest{
 			results = AccScan.scanRow(aConn,table,rowId,auths);			
 
 			int match_size = 5;
-			assertEquals(String.format("Expected %d results for scan of rowid '%s' ",match_size,rowId), match_size,  results.size());
+			String msg = String.format("Expected %d results for scan of rowid '%s' ",match_size,rowId);	
+			if (DEBUG_LOG){
+				System.out.println("\n"+msg);
+				System.out.println(AccUtils.prettyStr(results, 0));
+			}
+			assertEquals(msg,match_size,results.size());
 
 		} catch (Exception e) {
 			e.printStackTrace();

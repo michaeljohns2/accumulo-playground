@@ -16,6 +16,7 @@ import com.acuumulo.playground.AccFilter;
 import com.acuumulo.playground.AccFilterObj;
 import com.acuumulo.playground.AccScan;
 import com.acuumulo.playground.AccTable;
+import com.acuumulo.playground.AccUtils;
 
 
 public class PlayTest extends BasePlayTest{
@@ -36,8 +37,13 @@ public class PlayTest extends BasePlayTest{
 			String rowId = "a";
 			results = AccScan.scanRow(aConn,table,rowId,auths);			
 
-			int match_size = 5;
-			assertEquals(String.format("Expected %d results for scan of rowid '%s' ",match_size,rowId), match_size,  results.size());
+			int match_size = 5;			
+			String msg = String.format("Expected %d results for scan of rowid '%s' ",match_size,rowId);	
+			if (DEBUG_LOG){
+				System.out.println("\n"+msg);
+				System.out.println(AccUtils.prettyStr(results, 0));
+			}
+			assertEquals(msg,match_size,results.size());
 
 		} catch (Exception e) {
 			e.printStackTrace();
@@ -65,7 +71,7 @@ public class PlayTest extends BasePlayTest{
 					afo.cv("A|B").copyObj(),afo.resetValues().cv("A|B").copyObj());
 			List<String> descrips = Arrays.asList("by row","plus cf","plus cq","plus cv","cv only");
 
-			int match_size;
+			int match_size = 0;
 			for (int i=0; i< afos.size(); i++){
 				afo = afos.get(i);
 				descrip = descrips.get(i);
@@ -74,27 +80,30 @@ public class PlayTest extends BasePlayTest{
 
 				switch(i){
 				case 0:
-					match_size = 5;
-					assertEquals(String.format("Expected %d results for key %s (%s)",match_size,compKey,descrip), match_size,fresults.size());
+					match_size = 5;					
 					break;
 				case 1:
-					match_size = 3;
-					assertEquals(String.format("Expected %d results for key %s (%s)",match_size,compKey,descrip), match_size,fresults.size());
+					match_size = 3;					
 					break;
 				case 2:
-					match_size = 1;
-					assertEquals(String.format("Expected %d results for key %s (%s)",match_size,compKey,descrip), match_size,fresults.size());
+					match_size = 1;					
 					break;
 				case 3:
-					match_size = 1;
-					assertEquals(String.format("Expected %d results for key %s (%s)",match_size,compKey,descrip), match_size,fresults.size());
+					match_size = 1;					
 					break;
 				case 4:
 					match_size = 1;
-					assertEquals(String.format("Expected %d results for key %s (%s)",match_size,compKey,descrip), match_size,fresults.size());
-					break;    			
+					break;    	
+				default:
+					match_size = 0;
 				}
-
+				
+				String msg = String.format("Expected %d results for key %s (%s)",match_size,compKey,descrip);	
+				if (DEBUG_LOG){
+					System.out.println("\n"+msg);
+					System.out.println(AccUtils.prettyStr(fresults, 0));
+				}				
+				assertEquals(msg, match_size,fresults.size());
 			}    		
 
 		} catch (Exception e) {
@@ -115,28 +124,32 @@ public class PlayTest extends BasePlayTest{
 			Key compKey = afo.generateKey();
 			Map<Key, Value> fresults;
 
-			int match_size;
+			int match_size = 0;
 			for (PartialKey partialKey : PartialKey.values()){				
 				fresults = AccFilter.filterResultsByPartialKeyMatch(results, compKey, partialKey);
 
 				switch (partialKey){
 				case ROW:
 					match_size = 5;
-					assertEquals(String.format("Expected %d results for partialKey %s",match_size,partialKey.name()), match_size,  fresults.size());
 					break;
 				case ROW_COLFAM:
-					match_size = 3;
-					assertEquals(String.format("Expected %d results for partialKey %s",match_size,partialKey.name()), match_size,  fresults.size());
+					match_size = 3;					
 					break;	
 				case ROW_COLFAM_COLQUAL:
 				case ROW_COLFAM_COLQUAL_COLVIS:
-					match_size = 1;
-					assertEquals(String.format("Expected %d results for partialKey %s",match_size,partialKey.name()), match_size,  fresults.size());
+					match_size = 1;					
 					break;
 				default:
-					match_size = 0;
-					assertEquals(String.format("Expected %d results for partialKey %s",match_size,partialKey.name()), match_size,  fresults.size());
+					match_size = 0;					
 				}
+				
+				String msg = String.format("Expected %d results for partialKey %s",match_size,partialKey.name());		
+				if (DEBUG_LOG){
+					System.out.println("\n"+msg);
+					System.out.println(AccUtils.prettyStr(fresults, 0));
+				}	
+				assertEquals(msg,match_size,fresults.size());
+				
 			}
 		} catch (Exception e) {
 			e.printStackTrace();
