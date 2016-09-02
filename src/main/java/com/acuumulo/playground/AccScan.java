@@ -193,76 +193,115 @@ public class AccScan implements AccConstants{
 		return scanRow(conn, table, rowid, null);
 	}
 	
-//FIXME: FINISH!
-	
-//	/**
-//	 * Return entries matching criteria.
-//	 *
-//	 * @param token String
-//	 * @param kvPart KeyValuePart to test
-//	 * @param scanQualifier ScanQualifier for matching
-//	 * @param scanner Scanner
-//	 * @param limit int, truncate results if > 0
-//	 * @return Map<Key,Value>
-//	 */
-//	public static Map<Key,Value> scanForMatches(
-//			String token,
-//			KeyValuePart kvPart,
-//			ScanQualifier scanQualifier,
-//			Scanner scanner,
-//			int limit
-//			) {
-//		
-//		Map<Key,Value> results = new HashMap<>();
-//		
-//		String s = MementoRowId.standardize(token);
-//		if (s == null &&
-//			!ScanQualifier.EMPTY_OR_NULL.equals(scanQualifier) &&
-//			!ScanQualifier.NOT_EMPTY_OR_NULL.equals(scanQualifier)) return results;
-//		
-//		boolean rangeSet = false;
-//		if (KeyValuePart.KEY.equals(kvPart) || KeyValuePart.ROWID.equals(kvPart)){
-//			switch(scanQualifier){		
-//			case EXACT:
-//				scanner.setRange(Range.exact(s));
-//				rangeSet = true;
-//				break;
-//			case EXACT_SENSITIVE:
-//				scanner.setRange(Range.exact(token));
-//				rangeSet = true;
-//				break;
-//			case STARTS_WITH:
-//				scanner.setRange(Range.prefix(s));
-//				rangeSet = true;
-//				break;
-//			case STARTS_WITH_SENSITIVE:
-//				scanner.setRange(Range.prefix(token));
-//				rangeSet = true;
-//				break;
-//			default:
-//				//scan full table
-//			}
-//		}
-//		
-//		Iterator<Map.Entry<Key, Value>> iter = scanner.iterator();
-//		int count = 0;
-//		while(iter.hasNext()){
-//			count++;			
-//			Entry<Key,Value> entry = iter.next();
-//			
-//			// test token if rangeSet is false
-//			if (!rangeSet){
-//				
-//				String test = null;
-//				
-//			}
-//			
-//			// add results
-//			results.put(entry.getKey(), entry.getValue());
-//			if (limit > 0 && count >= limit)
-//				return results;
-//		}
-//		
-//		return results;
-//	}
+	/**
+	 * Return entries matching criteria.
+	 *
+	 * @param token String
+	 * @param kvPart KeyValuePart to test
+	 * @param scanQualifier ScanQualifier for matching
+	 * @param scanner Scanner
+	 * @param limit int, truncate results if > 0
+	 * @return Map<Key,Value>
+	 */
+	public static Map<Key,Value> scanForMatches(
+			String token,
+			KVPart kvPart,
+			ScanQualifier scanQualifier,
+			Scanner scanner,
+			int limit
+			) {
+		
+		Map<Key,Value> results = new HashMap<>();
+		
+		String s = AccUtils.manipulate(token,ManOp.NULL_TO_EMPTY);
+		if (s.isEmpty() &&
+			!ScanQualifier.EMPTY_OR_NULL.equals(scanQualifier) &&
+			!ScanQualifier.NOT_EMPTY_OR_NULL.equals(scanQualifier)) return results;
+		
+		boolean rangeSet = false;
+		
+		//Can only adjust range for ROW_ID 
+		if (KVPart.ROW_ID.equals(kvPart)){
+			switch(scanQualifier){		
+			case EXACT:
+				s = AccUtils.manipulate(
+						MementoRowId.standardize(token),
+						ManOp.NULL_TO_EMPTY);
+				
+				scanner.setRange(Range.exact(s));
+				rangeSet = true;
+				break;
+			case EXACT_CASE_SENSITIVE:
+				scanner.setRange(Range.exact(s));
+				rangeSet = true;
+				break;
+			case STARTS_WITH:
+				s = AccUtils.manipulate(
+						MementoRowId.standardize(token),
+						ManOp.NULL_TO_EMPTY);
+				
+				scanner.setRange(Range.prefix(s));
+				rangeSet = true;
+				break;
+			case STARTS_WITH_CASE_SENSITIVE:				
+				scanner.setRange(Range.prefix(s));
+				rangeSet = true;
+				break;
+			default:
+				//scan full table
+			}
+		}
+		
+		Iterator<Map.Entry<Key, Value>> iter = scanner.iterator();
+		int count = 0;
+		while(iter.hasNext()){
+			count++;			
+			Entry<Key,Value> entry = iter.next();
+			
+			// test token if rangeSet is false
+			if (!rangeSet){
+				
+				String data = KVPart.getKVData(entry, kvPart).getExpectedDataAsString(ManOp.NULL_TO_EMPTY);
+				
+				//standardize data for all conditions except CASE_SENSITIVE
+				if (!ScanQualifier.EXACT_CASE_SENSITIVE.equals(scanQualifier) &&
+					!ScanQualifier.STARTS_WITH_CASE_SENSITIVE.equals(scanQualifier)){
+					data = MementoRowId.standardize(data);
+				}
+				
+				//manipulate data from NULL_TO_EMPTY for all conditions.
+				data = AccUtils.manipulate(data,ManOp.NULL_TO_EMPTY);
+				
+				switch(scanQualifier){		
+				case EXACT:
+				case EXACT_CASE_SENSITIVE:
+					if (data.equals(s)) break;
+					else continue;
+				
+				case STARTS_WITH:
+				case STARTS_WITH_CASE_SENSITIVE:
+					if (data.startsWith(s)) break;
+					else continue;
+					
+				case EMPTY_OR_NULL:
+					if (data.isEmpty()) break;
+					else continue;
+					
+				case NOT_EMPTY_OR_NULL:
+					if (!data.isEmpty()) break;
+					else continue;
+						
+				default:
+					continue; //not accounted for
+				}
+			}
+			
+			// add results if you get to here
+			results.put(entry.getKey(), entry.getValue());
+			if (limit > 0 && count >= limit)
+				return results;
+		}
+		
+		return results;
+	}
 }

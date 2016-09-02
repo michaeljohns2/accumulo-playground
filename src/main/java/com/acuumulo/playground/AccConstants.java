@@ -40,7 +40,7 @@ public interface AccConstants {
 			return dataType;
 		}
 		
-		public static KVData getPart(Entry<Key,Value> entry,KVPart kvPart){
+		public static KVData getKVData(Entry<Key,Value> entry,KVPart kvPart){
 			return getPart(entry.getKey(),entry.getValue(),kvPart);
 		}
 		
@@ -68,6 +68,6 @@ public interface AccConstants {
 	}
 	
 	public static enum ScanQualifier{
-		STARTS_WITH, STARTS_WITH_SENSITIVE, EXACT, EXACT_SENSITIVE, EMPTY_OR_NULL, NOT_EMPTY_OR_NULL;
+		STARTS_WITH, STARTS_WITH_CASE_SENSITIVE, EXACT, EXACT_CASE_SENSITIVE, EMPTY_OR_NULL, NOT_EMPTY_OR_NULL;
 	}
 }
