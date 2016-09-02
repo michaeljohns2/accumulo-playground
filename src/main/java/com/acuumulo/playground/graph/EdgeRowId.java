@@ -34,7 +34,7 @@ public class EdgeRowId extends MementoRowId{
 
 	/**
 	 * Order node for edge.
-	 * Will lexicographically sort (ascending) A and B.
+	 * Will perform natural sort (ascending) A and B.
 	 * 
 	 * @param nodeRowIdA String Node A RowId
 	 * @param nodeRowIdB String Node B RowId

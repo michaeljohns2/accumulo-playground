@@ -46,6 +46,7 @@ public interface GraphConstants {
 	final public static String EDGE_CF = "edge";
 	
 	final public static String TYPE_CQ = "type";
+	final public static String NODE_PREFIX_CQ = "prefix";
 	final public static String NODE_ID_CQ = "id";
 	final public static String EDGE_ID1_CQ = "node_id_1";
 	final public static String EDGE_ID2_CQ = "node_id_2";

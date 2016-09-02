@@ -12,6 +12,7 @@ import org.apache.accumulo.core.client.TableExistsException;
 import org.apache.accumulo.core.client.TableNotFoundException;
 import org.apache.accumulo.core.data.Key;
 import org.apache.accumulo.core.data.Value;
+import org.junit.After;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
 
@@ -20,11 +21,16 @@ import com.acuumulo.playground.AccObj;
 import com.acuumulo.playground.AccTable;
 
 public class BasePlayTest {
-	
-	/* quick toggle for debug console output. */
-	public static boolean DEBUG_LOG = true;
-	
-	
+
+	/* quick toggle for debug console output (do it per method) */
+	public static boolean DEBUG_LOG = false;
+
+	@After
+	public void resetDebugLogToFalse() {
+		//!!! this is called after each test!!!
+		DEBUG_LOG = false;
+	}
+
 	protected static AccObj aObj;	
 	protected static Connector aConn;
 	protected static boolean useMini = true;
@@ -57,10 +63,12 @@ public class BasePlayTest {
 			throws IOException, InterruptedException {
 		//shut down cleanly on the way out
 		AccInstanceMgr.stopAccObj(useMini);
-		
+
 		//nullify generated variables
 		aObj = null;
 		aConn = null;
 		results = null;
+
+		DEBUG_LOG = false;//reset debug after tests.
 	}
 }

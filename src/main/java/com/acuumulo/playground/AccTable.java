@@ -3,7 +3,8 @@ package com.acuumulo.playground;
 import java.io.FileReader;
 import java.io.IOException;
 import java.nio.file.Path;
-import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.List;
 
 import org.apache.accumulo.core.client.AccumuloException;
 import org.apache.accumulo.core.client.AccumuloSecurityException;
@@ -22,7 +23,7 @@ import org.apache.log4j.Logger;
 
 import com.opencsv.CSVReader;
 
-public class AccTable {
+public class AccTable implements AccConstants{
 
 	final private static Logger logger = Logger.getLogger(AccTable.class);
 	
@@ -87,9 +88,7 @@ public class AccTable {
 				} catch(MutationsRejectedException e){
 					logger.warn("(eatException)",e);
 				}
-			}
-			
-			else writer.close();
+			} else writer.close();
 		}
 	}
 	
@@ -109,33 +108,20 @@ public class AccTable {
 			throws MutationsRejectedException {		
 		
 		Mutation m = new Mutation(new Text(rowid));
-		if (null == auths) {
+		
+		ColumnVisibility cv = AccAuths.generateColVisIf(auths);		
+		if (null == cv) 
 			m.put(new Text(cf), new Text(cq), new Value(val.getBytes()));
-		} else {			
-			m.put(new Text(cf), new Text(cq), new ColumnVisibility(auths), new Value(val.getBytes()));			
-		}
-		writer.addMutation(m);
-	}
-	
-	/**
-	 * Insert row with public / null auths using provided BatchWriter.
-	 * 
-	 * @param writer BatchWriter	 
-	 * @param rowid String 
-	 * @param cf String
-	 * @param cq String
-	 * @param val String
-	 * 
-	 * @throws MutationsRejectedException
-	 */
-	public static void insertRowPublic(BatchWriter writer, String rowid, String cf, String cq, String val)
-			throws MutationsRejectedException {		
-		insertRow(writer,rowid,cf,cq,val,null);
+		else 	
+			m.put(new Text(cf), new Text(cq), cv, new Value(val.getBytes()));			
+		
+		writer.addMutation(m);		
 	}
 	
 	
 	/**
 	 * Insert row into table.
+	 * It is more efficient for multiple writes to use {@link #insertRow(BatchWriter, String, String, String, String, String)}.
 	 * 
 	 * @param conn Connector
 	 * @param table String
@@ -150,38 +136,15 @@ public class AccTable {
 	 * @throws TableNotFoundException
 	 */
 	public static void insertRow(Connector conn, String table, String rowid, String cf, String cq, String val, String auths)
-			throws AccumuloException, AccumuloSecurityException, TableNotFoundException {		
-		BatchWriter bw = conn.createBatchWriter(table, new BatchWriterConfig());
-
-		Mutation m = new Mutation(new Text(rowid));
-		if (null == auths) {
-			m.put(new Text(cf), new Text(cq), new Value(val.getBytes()));
-		} else {			
-			m.put(new Text(cf), new Text(cq), new ColumnVisibility(auths), new Value(val.getBytes()));			
-		}
-		bw.addMutation(m);
-
-		bw.close();
-	}
-
-	/**
-	 * Insert row into table with public / null auths.
-	 * 
-	 * @param conn Connector
-	 * @param table String
-	 * @param rowid String
-	 * @param cf String
-	 * @param cq String
-	 * @param val String
-	 * 
-	 * @throws AccumuloException
-	 * @throws AccumuloSecurityException
-	 * @throws TableNotFoundException
-	 */
-	public static void insertRowPublic(Connector conn, String table, String rowid, String cf, String cq, String val)
 			throws AccumuloException, AccumuloSecurityException, TableNotFoundException {
-		insertRow(conn, table, rowid, cf, cq, val, null);
-	}	
+		
+		BatchWriter bw = createBatchWriter(conn, table);		
+		try{	
+			insertRow(bw, rowid, cf, cq, val, auths);
+		} finally {
+			closeBatchWriter(bw, false);
+		}		
+	}
 	
 	/**
 	 * Load csv into table. Table creation must be called outside. 
@@ -191,17 +154,21 @@ public class AccTable {
 	 * @param filePath Path
 	 * @param defAuths String default auths to use if not provided; may be null
 	 * @param stopOnError boolean whether to skip or stop processing bad entries
+	 * @return List<Long> of line numbers of any failed mutations.
 	 * 
 	 * @throws TableNotFoundException 
 	 * @throws IOException 
 	 * @throws MutationsRejectedException 
 	 * 
 	 */
-	public static void loadCsv(Connector conn, String table, Path filePath, String defAuths, boolean stopOnError)
+	public static List<Long> loadCsv(Connector conn, String table, Path filePath, String defAuths, boolean stopOnError)
 					throws TableNotFoundException, IOException, MutationsRejectedException{
         
 		logger.info(String.format("<<< processing file '%s' into table '%s' >>>",filePath.toString(),table));
-		BatchWriter bw = conn.createBatchWriter(table, new BatchWriterConfig());
+		
+		BatchWriter bw = createBatchWriter(conn, table);		
+		String dauths = AccAuths.isAuth(defAuths)? defAuths : null;
+		List<Long> issues = new ArrayList<>();
 		
 		try (CSVReader reader = new CSVReader(new FileReader(filePath.toFile()))){		
 		
@@ -210,8 +177,8 @@ public class AccTable {
 	     while ((line = reader.readNext()) != null) {
 	    	 len = line.length;
 	    	 
-	    	 if (len % 10 == 0)
-	    		 logger.info(String.format("... now ingesting line #%d (from %s) into table '%s'",reader.getLinesRead(),filePath.getFileName().toString(),table));
+	    	 if (reader.getLinesRead() % 10 == 0)
+	    		 logger.info(String.format("... now ingesting line #%d (%s) into '%s'",reader.getLinesRead(),filePath.getFileName().toString(),table));
 	    	 
 	    	 // skip comment line
 	    	 if (line[0].trim().startsWith("#")){
@@ -227,63 +194,41 @@ public class AccTable {
 	    	 
 //	         logger.debug(Arrays.asList(line).toString());
 	    	 
-	    	 Mutation m = new Mutation(new Text(line[0]));
-	        
-	         //inline auths
-	         if (len >= 5)
-				m.put(new Text(line[1]), new Text(line[2]), new ColumnVisibility(line[4]), new Value(line[3].getBytes()));
-	         
-	         //default auths
-	         else if (len == 4 && defAuths != null && !defAuths.isEmpty())			
-	        	 m.put(new Text(line[1]), new Text(line[2]), new ColumnVisibility(defAuths), new Value(line[3].getBytes()));
-	         
-	         //no auths
-	         else if (len == 4)			
-	        	 m.put(new Text(line[1]), new Text(line[2]), new Value(line[3].getBytes()));
-	         
-	         //incomplete line
-	         else if (!stopOnError){
-	        	 logger.warn(String.format("...as directed, skipping incomplete line #%d", reader.getLinesRead()));
-	        	 continue;
+	    	 //Must be at least 4 to use (5 means auths provided)
+	    	 if (len >=4){
+		         try{
+		        	 //set auths (still may be null)
+		    		 String auths = len >=5? line[4] : dauths;
+		    		 
+		    		 //--------------------------------------------------------------
+		    		 //insert      rowId	cf			cq			val			auths
+		    		 //--------------------------------------------------------------
+		    		 insertRow(bw, line[0], line[1], 	line[2], 	line[3],	auths);
+		    		 
+		         } catch (Exception e){
+		        	 issues.add(reader.getLinesRead());
+		        	 if (stopOnError){
+		        		 logger.warn(String.format("...stopping on issues with mutation at line #%d", reader.getLinesRead()),e);		        		 
+		        		 return issues;//terminate
+		        	 } else {
+		        		 logger.warn(String.format("...skipping mutation at line #%d", reader.getLinesRead()),e);		        		 
+		        		 continue;//graceful handling
+		        	 }
+		         }
+	    	 } else if (stopOnError){
+	        	 issues.add(reader.getLinesRead());
+	        	 logger.warn(String.format("...as directed, stopping on incomplete line #%d", reader.getLinesRead()));	        	 
+	        	 return issues;//terminate
 	         } else {
-	        	 logger.warn(String.format("...as directed, stopping on incomplete line #%d", reader.getLinesRead()));
-	        	 return;
-	         }
-	         
-	         //add mutation
-	         try{
-	        	 bw.addMutation(m);
-	         } catch (Exception e){
-	        	 logger.warn(String.format("...unable to add mutation at line #%d", reader.getLinesRead()),e);
-	        	 if (stopOnError){
-	        		 logger.warn("...as directed, stopping.");
-	        		 return;
-	        	 } else {
-	        		 logger.warn("...as directed, skipping.");
-	        		 continue;
-	        	 }
+	        	 issues.add(reader.getLinesRead());
+	        	 logger.warn(String.format("...as directed, skipping incomplete line #%d", reader.getLinesRead()));
+	        	 continue;//graceful handling
 	         }
 	     }
 		} finally{			
-			bw.close();			
+			closeBatchWriter(bw, stopOnError);			
 		}
-	}
-	
-	/**
-	 * Load csv into table with default public / null visibility. 
-	 * 
-	 * @param conn Connector
-	 * @param table Path
-	 * @param filePath String
-	 * @param stopOnError boolean whether to skip or stop processing bad entries
-	 * 
-	 * @throws TableNotFoundException 
-	 * @throws IOException 
-	 * @throws MutationsRejectedException 
-	 * 
-	 */
-	public static void loadCsvPublic(Connector conn, String table, Path filePath, boolean stopOnError) 
-			throws TableNotFoundException, IOException, MutationsRejectedException{
-		loadCsv(conn,table,filePath,null,stopOnError);
+		
+		return issues;
 	}
 }

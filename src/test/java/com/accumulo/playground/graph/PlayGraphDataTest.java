@@ -18,18 +18,18 @@ public class PlayGraphDataTest extends BasePlayTest{
 	
 	@Test	
 	public void testInsertAndScan() {
-		try{
 		
+//		DEBUG_LOG = true;//turn on for this test?
+		
+		try{
 			URL dUrl = PlayGraphDataTest.class.getResource("play-graph-data.csv");
 			
 			Path filePath = Paths.get(dUrl.toURI());
-			AccTable.loadCsvPublic(aConn, table, filePath, true);
+			AccTable.loadCsv(aConn, table, filePath, null, true);
 			
 			/* scan for rowId */    
 			String rowId = "m1:e1";
 			results = AccScan.scanRowPublic(aConn,table,rowId);
-			
-			//FIXME: ENHANCE SCAN CAPABILITY in AccScan
 			
 			int match_size = 3;
 			String msg = String.format("Expected %d results for scan of rowid '%s' ",match_size,rowId);	
@@ -44,5 +44,4 @@ public class PlayGraphDataTest extends BasePlayTest{
 			fail(e.getMessage());
 		}
 	}
-
 }
